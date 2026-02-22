@@ -5,9 +5,9 @@ import json
 
 
 class Contract(gl.Contract):
-    treasure_count: int
-    total_attempts: int
-    successful_claims: int
+    treasure_count: u256
+    total_attempts: u256
+    successful_claims: u256
 
     def __init__(self):
         self.treasure_count = 100

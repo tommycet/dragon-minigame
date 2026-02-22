@@ -1,6 +1,7 @@
 import { createClient, createAccount, generatePrivateKey } from "genlayer-js";
 import { studionet } from "genlayer-js/chains";
 import type { GameResult, GameStats } from "@shared/schema";
+import { gameStatsSchema } from "@shared/schema";
 import { addLog } from "@/lib/console-log";
 
 const STORAGE_KEY = "genlayer_account_key";
@@ -50,22 +51,21 @@ export async function readGameStats(contractAddress: string): Promise<GameStats>
       functionName: "get_stats",
       args: [],
     });
+    let raw: any = result;
     if (typeof result === "string") {
       try {
-        const stats = JSON.parse(result);
-        addLog("success", "Stats received", `${stats.treasure_remaining} treasure, ${stats.total_attempts} attempts`);
-        return stats;
+        raw = JSON.parse(result);
       } catch {
         const b64Decoded = tryDecodeBase64Result(result);
         if (b64Decoded) {
-          const stats = JSON.parse(b64Decoded);
-          addLog("success", "Stats decoded (base64)", `${stats.treasure_remaining} treasure, ${stats.total_attempts} attempts`);
-          return stats;
+          raw = JSON.parse(b64Decoded);
+          addLog("info", "Stats decoded from base64");
         }
       }
     }
-    addLog("success", "Stats received");
-    return result as GameStats;
+    const stats = gameStatsSchema.parse(raw);
+    addLog("success", "Stats received", `${stats.treasure_remaining} treasure, ${stats.total_attempts} attempts`);
+    return stats;
   } catch (err: any) {
     addLog("error", "Failed to read stats", err.message?.slice(0, 80) || "Unknown error");
     throw err;

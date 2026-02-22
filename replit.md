@@ -1,46 +1,92 @@
-# Dragon's Treasure - GenLayer Minigame
+# replit.md
 
 ## Overview
-An AI-powered minigame built on GenLayer's intelligent blockchain. Players write creative pleas to convince Drakarion the dragon to share its treasure. The dragon (powered by LLM via GenLayer's non-deterministic consensus) evaluates each plea and decides whether to grant treasure.
 
-## Architecture
-- **Frontend**: React + Vite + TailwindCSS + shadcn/ui
-- **Backend**: Express (serves frontend + RPC proxy for GenLayer)
-- **Blockchain**: GenLayer Studionet via genlayer-js SDK
-- **Contract**: Python intelligent contract using gl.nondet.exec_prompt (with gl.exec_prompt fallback) for AI decisions
+Dragon's Treasure is an AI-powered minigame built on GenLayer's intelligent blockchain. Players interact with "Drakarion," an AI dragon guarding a treasure hoard, by submitting creative pleas to convince it to share treasure. The dragon (powered by GenLayer's AI smart contract) evaluates each plea and decides whether to grant treasure based on creativity and emotional appeal. The project showcases GenLayer's ability to run AI-driven logic directly in smart contracts.
 
-## Key Files
-- `contracts/dragon_treasure.py` - The intelligent contract (Python) for GenLayer
-- `client/src/lib/genlayer.ts` - GenLayer JS SDK client wrapper (uses backend proxy)
-- `client/src/pages/home.tsx` - Main game page
-- `client/src/components/contract-setup.tsx` - Contract deployment setup flow
-- `client/src/components/dragon-response.tsx` - Dragon response display
-- `client/src/components/game-stats.tsx` - Game statistics panel
-- `client/src/components/history-panel.tsx` - Plea history sidebar
-- `shared/schema.ts` - TypeScript types and Zod schemas
-- `server/routes.ts` - Express routes including /api/genlayer-rpc proxy
+## User Preferences
 
-## How It Works
-1. User deploys the Python contract on GenLayer Studio (studionet)
-2. User pastes the contract address in the app
-3. App connects via genlayer-js SDK through backend RPC proxy to read/write the contract
-4. Player writes a plea, which triggers `claim_treasure` on-chain
-5. GenLayer validators run the LLM prompt and reach consensus
-6. Result is displayed with dragon's reasoning
+Preferred communication style: Simple, everyday language.
 
-## Important Technical Details
-- **RPC Proxy**: Browser requests to GenLayer studionet are proxied through `/api/genlayer-rpc` to avoid CORS issues
-- **Consensus Design**: The contract uses `prompt_non_comparative` equivalence principle (with fallbacks to `prompt_non_comparative` old API and `strict_eq`). Only the leader validator's LLM decides; other validators check quality. Frontend also uses `leaderOnly: true` in writeContract to skip multi-validator consensus for reliable execution
-- **API Compatibility**: Contract uses try/except fallbacks for both old (`gl.exec_prompt`) and new (`gl.nondet.exec_prompt`) GenLayer SDK APIs
-- **Error Handling**: Frontend detects MAJORITY_DISAGREE, AttributeError, Traceback, and other contract execution errors with user-friendly messages
+## System Architecture
 
-## Design Tokens
-- Primary color: Orange/fire theme (hsl 25 95% 53%)
-- Dark mode supported
-- Font: Open Sans
+### Frontend (React SPA)
+- **Framework**: React with TypeScript, bundled by Vite
+- **Routing**: Wouter (lightweight client-side router) with two routes: Home and 404
+- **UI Components**: shadcn/ui component library built on Radix UI primitives, styled with Tailwind CSS
+- **State Management**: React Query (@tanstack/react-query) for server state, React useState for local state
+- **Animations**: Framer Motion for UI transitions
+- **Path aliases**: `@/` maps to `client/src/`, `@shared/` maps to `shared/`
 
-## Recent Changes
-- Feb 21, 2026: Fixed CORS issue by adding backend RPC proxy for GenLayer studionet
-- Feb 21, 2026: Fixed consensus MAJORITY_DISAGREE by removing variable reasoning from nondet comparison
-- Feb 21, 2026: Added API compatibility fallbacks for GenLayer SDK v0.1.3+ changes
-- Feb 21, 2026: Initial build - contract, frontend, genlayer-js integration
+### Backend (Express API Server)
+- **Framework**: Express 5 on Node.js with TypeScript (run via tsx)
+- **Purpose**: Minimal — primarily serves as an RPC proxy to GenLayer's blockchain API
+- **Key endpoint**: `POST /api/genlayer-rpc` — proxies JSON-RPC requests to `https://studio.genlayer.com/api` to avoid CORS issues and keep the RPC URL server-side
+- **Health check**: `GET /api/health`
+- **Storage**: In-memory storage class exists (`MemStorage`) but is essentially empty — the app doesn't use a traditional database for game state. All game state lives on the GenLayer blockchain and in the client's localStorage.
+- **Dev mode**: Vite dev server runs as middleware with HMR
+- **Production**: Static files served from `dist/public`
+
+### Smart Contract (GenLayer/Python)
+- Located in `contracts/dragon_treasure.py`
+- Written in Python using GenLayer's contract SDK (`genlayer` package)
+- Maintains on-chain state: `treasure_count`, `total_attempts`, `successful_claims`
+- Uses `gl.nondet.exec_prompt()` to run AI prompts that evaluate player pleas
+- AI acts as "Drakarion" the dragon — denies ~70% of requests, awards 1-5 treasure for creative pleas
+- The contract is deployed via GenLayer Studio; the frontend guides users through deployment or entering an existing contract address
+
+### Client-Blockchain Integration
+- **Library**: `genlayer-js` SDK for client-side blockchain interaction
+- **Account management**: Private keys auto-generated and stored in localStorage
+- **Contract address**: Stored in localStorage; users can deploy new contracts or enter existing ones
+- **Game history**: Stored in localStorage (up to 50 entries)
+- **Console log system**: Custom pub/sub logging system (`console-log.ts`) that displays RPC calls and responses in a terminal-like UI panel
+
+### Data Flow
+1. User types a plea in the frontend
+2. Frontend calls `claimTreasure()` which uses genlayer-js to send a write transaction
+3. genlayer-js sends JSON-RPC through the Express proxy (`/api/genlayer-rpc`)
+4. Proxy forwards to GenLayer Studio API
+5. GenLayer smart contract runs the AI prompt and returns a result
+6. Frontend displays the dragon's response and updates local history
+
+### Schema (shared/schema.ts)
+- Uses Zod for validation (no Drizzle tables defined despite drizzle config existing)
+- `GameResult`: success boolean, message, reasoning, amount
+- `GameStats`: treasure_remaining, total_attempts, successful_claims
+- `PleaInput`: validated plea string (1-500 chars)
+- `GameHistoryEntry`: id, plea, result, timestamp
+
+### Database Note
+- `drizzle.config.ts` is configured for PostgreSQL but `shared/schema.ts` contains no Drizzle table definitions — only Zod schemas
+- The app currently doesn't use a database; all persistent state is on-chain or in localStorage
+- If a database is needed later, add Drizzle table schemas to `shared/schema.ts` and run `npm run db:push`
+
+### Build System
+- **Dev**: `npm run dev` — runs tsx with Vite middleware
+- **Build**: `npm run build` — Vite builds frontend to `dist/public`, esbuild bundles server to `dist/index.cjs`
+- **Production**: `npm start` — runs the bundled server
+
+## External Dependencies
+
+### GenLayer Blockchain
+- **RPC Endpoint**: `https://studio.genlayer.com/api` (proxied through Express)
+- **Chain**: Studionet (GenLayer's test network)
+- **SDK**: `genlayer-js` npm package for client-side blockchain interaction
+- **Smart contract language**: Python with `genlayer` SDK
+
+### Frontend Libraries
+- React 18, Vite, TypeScript
+- Tailwind CSS with shadcn/ui (Radix UI primitives)
+- Framer Motion for animations
+- Wouter for routing
+- @tanstack/react-query for async state
+
+### Replit-specific
+- `@replit/vite-plugin-runtime-error-modal` — error overlay in dev
+- `@replit/vite-plugin-cartographer` and `@replit/vite-plugin-dev-banner` — dev tools (conditional)
+
+### Database (configured but unused)
+- PostgreSQL via `DATABASE_URL` environment variable
+- Drizzle ORM + drizzle-kit for schema management
+- `connect-pg-simple` for session storage (available but not actively used)

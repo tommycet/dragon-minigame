@@ -8,9 +8,9 @@ export const gameResultSchema = z.object({
 });
 
 export const gameStatsSchema = z.object({
-  treasure_remaining: z.number(),
-  total_attempts: z.number(),
-  successful_claims: z.number(),
+  treasure_remaining: z.coerce.number(),
+  total_attempts: z.coerce.number(),
+  successful_claims: z.coerce.number(),
 });
 
 export const pleaSchema = z.object({
