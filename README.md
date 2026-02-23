@@ -3,9 +3,10 @@
 A minigame built on [GenLayer](https://genlayer.com)'s AI-powered intelligent contracts. Players write persuasive pleas to convince **Drakarion**, an ancient dragon, to share his treasure hoard. The dragon's decisions are evaluated by real AI running inside a blockchain smart contract with multi-validator consensus.
 
 <div align="center">
-  <video src="client/public/demo.mp4" width="100%" controls autoplay muted loop>
-    Your browser does not support the video tag.
-  </video>
+  <a href="https://youtu.be/L3QLw9hNC3w" target="_blank">
+    <img src="https://img.youtube.com/vi/L3QLw9hNC3w/maxresdefault.jpg" alt="Watch Demo" width="100%" />
+  </a>
+  <p><em>▶ Click to watch the demo on YouTube</em></p>
 </div>
 
 ---
